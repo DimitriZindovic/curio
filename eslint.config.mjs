@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Dossier de référence design (maquette HTML/JS), hors application.
+    "design_handoff_curio_dark/**",
   ]),
 ]);
 
