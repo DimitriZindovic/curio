@@ -103,16 +103,38 @@ export async function summarizeArticle(formData: FormData) {
   });
   if (!article) return;
 
-  const source = article.content || article.excerpt || article.title;
+  // Beaucoup de flux (Hacker News, etc.) ne donnent qu'un extrait ou un lien
+  // vers les commentaires. Si le contenu stocké est trop maigre, on scrape
+  // l'article pour récupérer le vrai texte avant de résumer.
+  let content = article.content ?? "";
+  let excerpt = article.excerpt;
+  const isExternal = !article.url.startsWith("curio://");
+  if (content.trim().length < 600 && isExternal) {
+    try {
+      const scraped = await scrapeArticle(article.url);
+      if (scraped.content && scraped.content.length > content.length) {
+        content = scraped.content;
+        excerpt = excerpt ?? scraped.excerpt;
+      }
+    } catch {
+      // Scraping impossible (paywall, JS, 403…) : on garde ce qu'on a.
+    }
+  }
+
+  const source = content || article.excerpt || article.title;
   const summary = await summarize(source);
   if (!summary) return;
 
   const interests = await prisma.interest.findMany({ where: { userId: user.id } });
-  const relevanceScore = computeScore({ ...article, summary }, interests);
+  const relevanceScore = computeScore(
+    { ...article, content, excerpt, summary },
+    interests,
+  );
 
   await prisma.article.update({
     where: { id },
-    data: { summary, relevanceScore },
+    // On persiste le contenu scrapé pour les prochains résumés / le scoring.
+    data: { summary, relevanceScore, content, excerpt },
   });
   revalidatePath(`/articles/${id}`);
   revalidatePath("/");
