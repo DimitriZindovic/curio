@@ -3,6 +3,9 @@ import type { NextRequest } from "next/server";
 import { refreshActiveSources } from "@/app/lib/rss";
 
 export const dynamic = "force-dynamic";
+// Le rafraîchissement (réseau + DB sur plusieurs sources) peut dépasser le
+// timeout par défaut : on relève la durée max (jusqu'à 60 s sur Vercel Hobby).
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
