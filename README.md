@@ -27,6 +27,7 @@ Comptes **email + mot de passe** via Better Auth (`app/lib/auth-server.ts`, endp
    - `CRON_SECRET` : protège l'endpoint de refresh.
 
 2. **Base de données** — appliquer les migrations :
+
    ```bash
    npx prisma migrate deploy   # ou: npx prisma migrate dev
    ```
@@ -39,14 +40,14 @@ Comptes **email + mot de passe** via Better Auth (`app/lib/auth-server.ts`, endp
 
 ## Fonctionnalités
 
-| # | Fonctionnalité | Où |
-|---|---|---|
-| 1 | Gestion des sources RSS + refresh (manuel et auto) | `/sources` |
-| 2 | Ajout manuel d'un article par URL (scraping titre/contenu) | Dashboard `/` |
-| 3 | Résumé IA de chaque article (Claude, runtime) | Détail article |
-| 4 | Tagging manuel + suggestion de tags par l'IA | Détail article |
-| 5 | Scoring de pertinence configurable (mots-clés pondérés) | `/settings` |
-| + | Digest hebdomadaire (bonus) | `/digests` |
+| #   | Fonctionnalité                                             | Où             |
+| --- | ---------------------------------------------------------- | -------------- |
+| 1   | Gestion des sources RSS + refresh (manuel et auto)         | `/sources`     |
+| 2   | Ajout manuel d'un article par URL (scraping titre/contenu) | Dashboard `/`  |
+| 3   | Résumé IA de chaque article (Claude, runtime)              | Détail article |
+| 4   | Tagging manuel + suggestion de tags par l'IA               | Détail article |
+| 5   | Scoring de pertinence configurable (mots-clés pondérés)    | `/settings`    |
+| +   | Digest hebdomadaire (bonus)                                | `/digests`     |
 
 ## Refresh automatique
 
@@ -78,3 +79,9 @@ Couverture : logique de scoring (`computeScore`, `scoreColor`), normalisation de
 - `app/lib/actions/` — Server Actions scopées par utilisateur (sources, articles, tags, interests, digests).
 - `app/api/auth/[...all]/` — endpoints Better Auth.
 - `prisma/schema.prisma` + `prisma.config.ts` — modèle de données (Prisma 7, driver adapter `@prisma/adapter-pg`).
+
+## Cadrage de l'IA (méthode)
+
+- **`CLAUDE.md`** — règles, invariants, conventions, modules déterministes à appeler. Détail dans `PROJECT_RULES.md`, `ARCHITECTURE.md`, `DEPLOY.md`.
+- **Skills** (`.claude/skills/`) : `curio-veille` (métier — domaine veille & scoring) et `quality-gate` (transverse — garde-fou anti-dette réutilisable).
+- **Scripts déterministes** (`scripts/`) : `lint-dette.ts` (dette générique) et `check-invariants.ts` (invariants multi-tenant), + la logique fiable centralisée dans `app/lib/` (`scoring.ts`, `rss.ts`, `scrape.ts`).

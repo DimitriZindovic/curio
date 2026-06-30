@@ -75,6 +75,11 @@ Claude les connaît mal — à rappeler :
 - `npx prisma generate` → régénère le client Prisma
 - `npm run build` → build prod (Vercel utilise `vercel-build` : generate + migrate deploy + build)
 
+## Skills (`.claude/skills/`)
+
+- **`curio-veille`** (métier) → domaine veille : entités, formule de scoring, pipeline d'ingestion, invariants multi-tenant. À charger pour toute évolution RSS/scoring/tagging/digests.
+- **`quality-gate`** (transverse) → garde-fou anti-dette réutilisable : lance lint + types + tests + `scripts/lint-dette.ts` + `scripts/check-invariants.ts`, rappelle les 7 commandements.
+
 ## Fichiers de référence
 
 - [PROJECT_RULES.md](./PROJECT_RULES.md) → règles métier détaillées, formule de scoring, machine d'ingestion, edge cases
