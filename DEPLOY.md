@@ -27,7 +27,7 @@ git add -A && git commit -m "Préparation déploiement" && git push
 ## 3. Vercel
 
 1. **vercel.com** → connexion GitHub → **Add New… → Project** → importer le repo.
-2. Vercel détecte Next.js et lance le script **`vercel-build`** (`prisma generate && prisma migrate deploy && next build`) → **les tables sont créées automatiquement** au 1er déploiement.
+2. Vercel détecte Next.js et lance **`vercel-build`** (`prisma generate && next build`). Les migrations ne tournent **pas** dans le build (voir § Migrations) — le build ne dépend donc pas de la base.
 3. **Environment Variables** (scope Production) :
 
 | Variable | Valeur |
@@ -49,10 +49,21 @@ L'URL n'est connue qu'après le 1er déploiement (ex. `https://curio-xxx.vercel.
 
 Aller sur l'URL → **créer un compte** → ajouter ses flux. Le cron (`vercel.json`) rafraîchit les sources **1×/jour** (limite Hobby), authentifié par le `CRON_SECRET` que Vercel envoie automatiquement.
 
+## Migrations (manuelles, hors build)
+
+Les migrations ne tournent **pas** dans le build : le pooler transaction (6543) fait *hang* `prisma migrate deploy` (advisory locks non supportés). On migre une fois à la main, via le **session pooler (5432)** :
+
+```bash
+DIRECT_URL="postgresql://postgres.<REF>:<PWD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres" \
+  npx prisma migrate deploy
+```
+
+La base étant vide, ça crée toutes les tables. À relancer uniquement quand le schéma change (après un `npx prisma migrate dev` local + push).
+
 ## Adaptations déjà en place pour le gratuit
 
-- `vercel-build` (génère Prisma + migre + build).
-- `DIRECT_URL` pour les migrations (le pooler transaction ne supporte pas bien le DDL).
+- `vercel-build` = `prisma generate && next build` (pas de DB au build).
+- Migrations manuelles via `DIRECT_URL` (session pooler 5432).
 - Cron quotidien (`0 6 * * *`) — conforme au plan Hobby (max 1×/jour).
 - `maxDuration = 60` sur la route cron (évite le timeout serverless).
 
