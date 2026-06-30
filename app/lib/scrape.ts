@@ -1,5 +1,5 @@
-import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
+import { parseHTML } from "linkedom";
 
 export type ScrapedArticle = {
   title: string;
@@ -10,6 +10,7 @@ export type ScrapedArticle = {
 
 /**
  * Récupère une URL et en extrait le titre + le contenu lisible via Readability.
+ * Utilise linkedom (DOM léger, compatible serverless) plutôt que jsdom.
  */
 export async function scrapeArticle(url: string): Promise<ScrapedArticle> {
   const response = await fetch(url, {
@@ -21,12 +22,12 @@ export async function scrapeArticle(url: string): Promise<ScrapedArticle> {
   }
 
   const html = await response.text();
-  const dom = new JSDOM(html, { url });
-  const reader = new Readability(dom.window.document);
+  const { document } = parseHTML(html);
+  const reader = new Readability(document as unknown as Document);
   const parsed = reader.parse();
 
   const fallbackTitle =
-    dom.window.document.querySelector("title")?.textContent?.trim() || url;
+    document.querySelector("title")?.textContent?.trim() || url;
 
   return {
     title: parsed?.title?.trim() || fallbackTitle,

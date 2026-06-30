@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock du parser rss-parser (instancié au niveau module dans rss.ts).
+// Mock du parser rss-parser (instancie au niveau module dans rss.ts).
 const { parseURLMock } = vi.hoisted(() => ({ parseURLMock: vi.fn() }));
 vi.mock("rss-parser", () => ({
   default: class {
     parseURL = parseURLMock;
   },
 }));
-// rss.ts importe aussi prisma et computeScore : neutralisés (parseFeed ne les utilise pas).
+// rss.ts importe aussi prisma et computeScore : neutralises (parseFeed ne les utilise pas).
 vi.mock("@/app/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/app/lib/scoring", () => ({ computeScore: () => 0 }));
 

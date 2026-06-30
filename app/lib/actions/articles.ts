@@ -95,6 +95,37 @@ export async function deleteArticle(formData: FormData) {
   revalidatePath("/");
 }
 
+const THIN_CONTENT_THRESHOLD = 600;
+
+type ResolvedContent = { content: string; excerpt: string | null };
+
+/**
+ * Beaucoup de flux (Hacker News, etc.) ne donnent qu'un extrait ou un lien vers
+ * les commentaires. Si le contenu stocké est trop maigre, on scrape l'article
+ * pour récupérer le vrai texte avant de résumer. Guard clauses = nesting plat.
+ */
+async function resolveContent(article: {
+  content: string | null;
+  excerpt: string | null;
+  url: string;
+}): Promise<ResolvedContent> {
+  const content = article.content ?? "";
+  const excerpt = article.excerpt;
+  const isExternal = !article.url.startsWith("curio://");
+  if (content.trim().length >= THIN_CONTENT_THRESHOLD || !isExternal) {
+    return { content, excerpt };
+  }
+  try {
+    const scraped = await scrapeArticle(article.url);
+    const text = scraped.content;
+    if (text && text.length > content.length)
+      return { content: text, excerpt: excerpt ?? scraped.excerpt };
+  } catch {
+    // Scraping impossible (paywall, JS, 403…) : on garde ce qu'on a.
+  }
+  return { content, excerpt };
+}
+
 export async function summarizeArticle(formData: FormData) {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
@@ -103,24 +134,7 @@ export async function summarizeArticle(formData: FormData) {
   });
   if (!article) return;
 
-  // Beaucoup de flux (Hacker News, etc.) ne donnent qu'un extrait ou un lien
-  // vers les commentaires. Si le contenu stocké est trop maigre, on scrape
-  // l'article pour récupérer le vrai texte avant de résumer.
-  let content = article.content ?? "";
-  let excerpt = article.excerpt;
-  const isExternal = !article.url.startsWith("curio://");
-  if (content.trim().length < 600 && isExternal) {
-    try {
-      const scraped = await scrapeArticle(article.url);
-      if (scraped.content && scraped.content.length > content.length) {
-        content = scraped.content;
-        excerpt = excerpt ?? scraped.excerpt;
-      }
-    } catch {
-      // Scraping impossible (paywall, JS, 403…) : on garde ce qu'on a.
-    }
-  }
-
+  const { content, excerpt } = await resolveContent(article);
   const source = content || article.excerpt || article.title;
   const summary = await summarize(source);
   if (!summary) return;

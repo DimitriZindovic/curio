@@ -14,7 +14,7 @@ App web de **veille technologique personnelle, multi-comptes** : chaque utilisat
 - **Auth** : **Better Auth** (email + mot de passe), `app/lib/auth-server.ts` / `auth-client.ts`, endpoints `/api/auth/*`.
 - **Styling** : **Tailwind CSS v4** (tokens dans `app/globals.css` via `@theme inline`). Thème dark / accent vert.
 - **IA** : Anthropic SDK, modèle **`claude-sonnet-4-6`** (`app/lib/ai.ts`).
-- **RSS / scraping** : `rss-parser` (`app/lib/rss.ts`) · `@mozilla/readability` + `jsdom` (`app/lib/scrape.ts`)
+- **RSS / scraping** : `rss-parser` (`app/lib/rss.ts`) · `@mozilla/readability` + `linkedom` (`app/lib/scrape.ts`) — linkedom car compatible serverless (jsdom casse sur Vercel : dépendance ESM en `require()`)
 - **Tests** : **Vitest** (`tests/`)
 
 > ⚠️ Next.js 16 a des conventions qui diffèrent des versions précédentes (voir `AGENTS.md`). Notamment : le middleware s'appelle **`proxy.ts`** ; mutations via **Server Actions** ; `searchParams`/`params` sont des **Promises** (à `await`).

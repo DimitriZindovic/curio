@@ -1,18 +1,19 @@
+import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
 /**
- * Vérificateur d'invariants SPÉCIFIQUES à Curio — déterministe (zéro LLM).
+ * Verificateur d'invariants SPECIFIQUES a Curio — deterministe (zero LLM).
  *
- * Fait respecter les règles métier qui ne doivent jamais être cassées
+ * Fait respecter les regles metier qui ne doivent jamais etre cassees
  * (cf. CLAUDE.md / PROJECT_RULES.md) :
  *   1. Chaque Server Action de `app/lib/actions/` appelle `requireUser()`.
- *   2. Le SDK Anthropic n'est utilisé QUE dans `app/lib/ai.ts`.
+ *   2. Le SDK Anthropic n'est utilise QUE dans `app/lib/ai.ts`.
  *   3. `schema.prisma` ne met pas d'`url` dans le bloc `datasource` (Prisma 7).
  *   4. Pas de `middleware.ts` (c'est `proxy.ts` en Next.js 16).
  *
- * Code de sortie : 0 si tout est respecté, 1 sinon.
+ * Code de sortie : 0 si tout est respecte, 1 sinon.
  * Usage : npx tsx scripts/check-invariants.ts
  */
-import { readdirSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 
 const violations: string[] = [];
 
@@ -72,18 +73,25 @@ for (const candidate of ["middleware.ts", "src/middleware.ts", "app/middleware.t
   }
 }
 
-console.log("");
-console.log("============================================================");
-console.log("  INVARIANTS CURIO — vérification déterministe");
-console.log("============================================================\n");
+const line = (text = ""): void => {
+  process.stdout.write(`${text}\n`);
+};
+
+line("");
+line("============================================================");
+line("  INVARIANTS CURIO — vérification déterministe");
+line("============================================================");
+line("");
 
 if (violations.length === 0) {
-  console.log("  OK — tous les invariants sont respectés");
-  console.log("\n============================================================");
+  line("  OK — tous les invariants sont respectés");
+  line("");
+  line("============================================================");
   process.exit(0);
 } else {
-  for (const v of violations) console.log(`  ✖ ${v}`);
-  console.log(`\n  KO — ${violations.length} invariant(s) violé(s)`);
-  console.log("============================================================");
+  for (const v of violations) line(`  ✖ ${v}`);
+  line("");
+  line(`  KO — ${violations.length} invariant(s) violé(s)`);
+  line("============================================================");
   process.exit(1);
 }
