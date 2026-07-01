@@ -51,7 +51,9 @@ describe("parseFeed", () => {
     expect(items).toHaveLength(1);
     expect(items[0].url).toBe("https://ex.com/ok");
   });
+});
 
+describe("parseFeed — extraction titre/extrait", () => {
   it("utilise le lien comme titre de repli", async () => {
     parseURLMock.mockResolvedValue({
       items: [{ link: "https://ex.com/no-title" }],

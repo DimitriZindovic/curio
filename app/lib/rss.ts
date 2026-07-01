@@ -56,38 +56,19 @@ export type RefreshResult = {
   error?: string;
 };
 
-/** Rafraîchit une source : insère les nouveaux articles (dédoublonnés par URL). */
-export async function refreshSource(sourceId: string): Promise<RefreshResult> {
-  const source = await prisma.source.findUnique({ where: { id: sourceId } });
-  if (!source) return { added: 0, total: 0, error: "Source introuvable" };
-  if (source.type !== "RSS") {
-    return { added: 0, total: 0, error: "Source non RSS" };
-  }
-
-  let items: FeedItem[];
-  try {
-    items = await parseFeed(source.url);
-  } catch (err) {
-    return {
-      added: 0,
-      total: 0,
-      error: err instanceof Error ? err.message : "Échec du parsing du flux",
-    };
-  }
-
-  const interests = await prisma.interest.findMany({
-    where: { userId: source.userId },
-  });
+/** Insère les articles absents (dédoublonnés sur (userId, url)). Renvoie le nb ajoutés. */
+async function ingestNewArticles(
+  source: { id: string; userId: string },
+  items: FeedItem[],
+  interests: { keyword: string; weight: number }[],
+): Promise<number> {
   let added = 0;
-
   for (const item of items) {
     const exists = await prisma.article.findUnique({
       where: { userId_url: { userId: source.userId, url: item.url } },
       select: { id: true },
     });
     if (exists) continue;
-
-    const relevanceScore = computeScore(item, interests);
     await prisma.article.create({
       data: {
         title: item.title,
@@ -95,19 +76,36 @@ export async function refreshSource(sourceId: string): Promise<RefreshResult> {
         content: item.content,
         excerpt: item.excerpt,
         publishedAt: item.publishedAt,
-        relevanceScore,
+        relevanceScore: computeScore(item, interests),
         sourceId: source.id,
         userId: source.userId,
       },
     });
     added += 1;
   }
+  return added;
+}
 
+/** Rafraîchit une source : insère les nouveaux articles (dédoublonnés par URL). */
+export async function refreshSource(sourceId: string): Promise<RefreshResult> {
+  const source = await prisma.source.findUnique({ where: { id: sourceId } });
+  if (!source) return { added: 0, total: 0, error: "Source introuvable" };
+  if (source.type !== "RSS") return { added: 0, total: 0, error: "Source non RSS" };
+
+  let items: FeedItem[];
+  try {
+    items = await parseFeed(source.url);
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Échec du parsing du flux";
+    return { added: 0, total: 0, error };
+  }
+
+  const interests = await prisma.interest.findMany({ where: { userId: source.userId } });
+  const added = await ingestNewArticles(source, items, interests);
   await prisma.source.update({
     where: { id: source.id },
     data: { lastFetchedAt: new Date() },
   });
-
   return { added, total: items.length };
 }
 

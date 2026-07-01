@@ -3,6 +3,35 @@
 import { useState, useTransition } from "react";
 import { addTag, suggestArticleTags } from "@/app/lib/actions/tags";
 
+function SuggestionList({
+  articleId,
+  suggestions,
+}: {
+  articleId: string;
+  suggestions: string[];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted">
+      <span className="flex items-center gap-2">
+        <span className="size-[6px] rounded-full bg-accent" />
+        Suggestions IA :
+      </span>
+      {suggestions.map((label) => (
+        <form key={label} action={addTag} className="inline">
+          <input type="hidden" name="articleId" value={articleId} />
+          <input type="hidden" name="label" value={label} />
+          <button
+            type="submit"
+            className="font-semibold text-accent transition hover:underline"
+          >
+            {label}
+          </button>
+        </form>
+      ))}
+    </div>
+  );
+}
+
 export default function SuggestTags({ articleId }: { articleId: string }) {
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [pending, startTransition] = useTransition();
@@ -39,24 +68,7 @@ export default function SuggestTags({ articleId }: { articleId: string }) {
       )}
 
       {suggestions && suggestions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted">
-          <span className="flex items-center gap-2">
-            <span className="size-[6px] rounded-full bg-accent" />
-            Suggestions IA :
-          </span>
-          {suggestions.map((label) => (
-            <form key={label} action={addTag} className="inline">
-              <input type="hidden" name="articleId" value={articleId} />
-              <input type="hidden" name="label" value={label} />
-              <button
-                type="submit"
-                className="font-semibold text-accent transition hover:underline"
-              >
-                {label}
-              </button>
-            </form>
-          ))}
-        </div>
+        <SuggestionList articleId={articleId} suggestions={suggestions} />
       )}
     </div>
   );

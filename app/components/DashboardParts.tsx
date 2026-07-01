@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import ArticleCard from "@/app/components/ArticleCard";
+import AddArticleForm from "@/app/components/AddArticleForm";
 
 export type SearchParams = {
   status?: string;
@@ -26,6 +27,28 @@ export function buildHref(current: SearchParams, overrides: Partial<SearchParams
   }
   const qs = sp.toString();
   return qs ? `/?${qs}` : "/";
+}
+
+export function DashboardHeader({
+  totalCount,
+  unreadCount,
+}: {
+  totalCount: number;
+  unreadCount: number;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <h1 className="text-[28px] font-extrabold tracking-[-0.02em] text-text">
+          Articles
+        </h1>
+        <p className="mt-[5px] text-sm text-muted">
+          {totalCount} article(s) · {unreadCount} non lu(s)
+        </p>
+      </div>
+      <AddArticleForm />
+    </div>
+  );
 }
 
 export function StatsBar({
@@ -158,15 +181,7 @@ function FilterSelect({
   );
 }
 
-export function AdvancedFilters({
-  params,
-  status,
-  sortBy,
-  view,
-  minScore,
-  sources,
-  tags,
-}: {
+type AdvancedFiltersProps = {
   params: SearchParams;
   status: string;
   sortBy: string;
@@ -174,7 +189,10 @@ export function AdvancedFilters({
   minScore: number;
   sources: Option[];
   tags: { id: string; label: string }[];
-}) {
+};
+
+export function AdvancedFilters(props: AdvancedFiltersProps) {
+  const { params, status, sortBy, view, minScore, sources, tags } = props;
   return (
     <form className="mt-[10px] flex flex-wrap items-center gap-2">
       <input type="hidden" name="status" value={status} />

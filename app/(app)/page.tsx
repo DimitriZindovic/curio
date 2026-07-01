@@ -1,10 +1,10 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
 import { requireUser } from "@/app/lib/session";
-import AddArticleForm from "@/app/components/AddArticleForm";
 import {
   AdvancedFilters,
   ArticleGrid,
+  DashboardHeader,
   FilterChips,
   SortViewToggle,
   StatsBar,
@@ -68,17 +68,7 @@ export default async function DashboardPage({
   return (
     <>
       <div className="shrink-0 px-[34px] pt-[26px]">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] font-extrabold tracking-[-0.02em] text-text">
-              Articles
-            </h1>
-            <p className="mt-[5px] text-sm text-muted">
-              {d.totalCount} article(s) · {d.unreadCount} non lu(s)
-            </p>
-          </div>
-          <AddArticleForm />
-        </div>
+        <DashboardHeader totalCount={d.totalCount} unreadCount={d.unreadCount} />
 
         <StatsBar
           unreadCount={d.unreadCount}

@@ -1,10 +1,38 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/prisma";
 import ScoreRing from "@/app/components/ScoreRing";
 import { requireUser } from "@/app/lib/session";
 
 export const dynamic = "force-dynamic";
+
+type DigestArticle = Prisma.ArticleGetPayload<{ include: { source: true } }>;
+
+function DigestArticleRow({ article }: { article: DigestArticle }) {
+  const excerpt = article.summary ?? article.excerpt;
+  return (
+    <Link
+      href={`/articles/${article.id}`}
+      className="flex items-start gap-[15px] rounded-[16px] border border-border bg-surface p-[18px] transition hover:border-border-2 hover:bg-surface-hov"
+    >
+      <ScoreRing score={article.relevanceScore} />
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 text-xs text-muted">
+          {article.source?.name ?? "Sans source"}
+        </div>
+        <h3 className="text-base font-bold leading-[1.35] tracking-[-0.01em] text-text">
+          {article.title}
+        </h3>
+        {excerpt && (
+          <p className="mt-2 line-clamp-2 text-[13.5px] leading-[1.55] text-muted">
+            {excerpt}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}
 
 export default async function DigestDetailPage({
   params,
@@ -15,12 +43,7 @@ export default async function DigestDetailPage({
   const user = await requireUser();
   const digest = await prisma.digest.findFirst({
     where: { id, userId: user.id },
-    include: {
-      articles: {
-        orderBy: { relevanceScore: "desc" },
-        include: { source: true },
-      },
-    },
+    include: { articles: { orderBy: { relevanceScore: "desc" }, include: { source: true } } },
   });
 
   if (!digest) notFound();
@@ -46,30 +69,7 @@ export default async function DigestDetailPage({
         ) : (
           <div className="flex flex-col gap-[11px]">
             {digest.articles.map((article) => (
-              <Link
-                key={article.id}
-                href={`/articles/${article.id}`}
-                className="flex items-start gap-[15px] rounded-[16px] border border-border bg-surface p-[18px] transition hover:border-border-2 hover:bg-surface-hov"
-              >
-                <ScoreRing score={article.relevanceScore} />
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 text-xs text-muted">
-                    {article.source?.name ?? "Sans source"}
-                  </div>
-                  <h3 className="text-base font-bold leading-[1.35] tracking-[-0.01em] text-text">
-                    {article.title}
-                  </h3>
-                  {article.summary ? (
-                    <p className="mt-2 line-clamp-2 text-[13.5px] leading-[1.55] text-muted">
-                      {article.summary}
-                    </p>
-                  ) : article.excerpt ? (
-                    <p className="mt-2 line-clamp-2 text-[13.5px] leading-[1.55] text-muted">
-                      {article.excerpt}
-                    </p>
-                  ) : null}
-                </div>
-              </Link>
+              <DigestArticleRow key={article.id} article={article} />
             ))}
           </div>
         )}

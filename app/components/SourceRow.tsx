@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { CSSProperties } from "react";
 import {
   deleteSource,
   refreshOneSource,
@@ -9,6 +10,8 @@ import {
 } from "@/app/lib/actions/sources";
 
 const emptyState = {};
+const ICON_BTN =
+  "flex size-8 items-center justify-center rounded-[9px] border border-border-2 text-[13px] text-muted transition hover:text-text-2";
 
 type Props = {
   id: string;
@@ -20,15 +23,195 @@ type Props = {
   lastFetchedLabel: string;
 };
 
-export default function SourceRow({
+function StatusBadge({ active }: { active: boolean }) {
+  if (active) {
+    return (
+      <span
+        className="rounded-[6px] px-2 py-0.5 text-[11px] font-semibold text-accent"
+        style={{ background: "var(--color-accent-soft)" }}
+      >
+        active
+      </span>
+    );
+  }
+  return (
+    <span
+      className="rounded-[6px] px-2 py-0.5 text-[11px] font-semibold"
+      style={{
+        color: "var(--color-warn)",
+        background: "color-mix(in oklch, var(--color-warn) 16%, transparent)",
+      }}
+    >
+      inactive
+    </span>
+  );
+}
+
+function SourceActions({
   id,
+  active,
+  onEdit,
+  onToggleActive,
+}: {
+  id: string;
+  active: boolean;
+  onEdit: () => void;
+  onToggleActive: () => void;
+}) {
+  return (
+    <div className="flex shrink-0 gap-[7px]">
+      <form action={refreshOneSource}>
+        <input type="hidden" name="id" value={id} />
+        <button type="submit" className={ICON_BTN} aria-label="Rafraîchir">
+          ↻
+        </button>
+      </form>
+      <button type="button" onClick={onEdit} className={ICON_BTN} aria-label="Éditer">
+        ✎
+      </button>
+      <button
+        type="button"
+        onClick={onToggleActive}
+        className={ICON_BTN}
+        aria-label={active ? "Désactiver" : "Activer"}
+      >
+        {active ? "⏸" : "▶"}
+      </button>
+      <form action={deleteSource}>
+        <input type="hidden" name="id" value={id} />
+        <button
+          type="submit"
+          aria-label="Supprimer"
+          className="flex size-8 items-center justify-center rounded-[9px] border text-[13px] text-danger transition hover:bg-surface-hov"
+          style={{ borderColor: "var(--color-danger-bd)" }}
+        >
+          ✕
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function SourceHeader({
   name,
   url,
   category,
   active,
   articleCount,
   lastFetchedLabel,
-}: Props) {
+  id,
+  onEdit,
+  onToggleActive,
+}: Props & { onEdit: () => void; onToggleActive: () => void }) {
+  const iconStyle: CSSProperties = active
+    ? { background: "var(--color-accent-soft)", color: "var(--color-accent)" }
+    : { background: "var(--color-border)", color: "var(--color-faint)" };
+  return (
+    <div className="flex items-center gap-4">
+      <span
+        className="flex size-10 shrink-0 items-center justify-center rounded-[11px] text-[17px]"
+        style={iconStyle}
+      >
+        ⦿
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-[9px]">
+          <span className="text-[15px] font-bold text-text">{name}</span>
+          {category && (
+            <span className="rounded-[6px] bg-border px-2 py-0.5 text-[11px] font-semibold text-muted">
+              {category}
+            </span>
+          )}
+          <StatusBadge active={active} />
+        </div>
+        <div className="mt-1 truncate font-mono text-[12px] text-faint">{url}</div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div className="text-[15px] font-bold text-accent">{articleCount}</div>
+        <div className="text-[11px] text-faint">articles</div>
+      </div>
+      <div className="w-[120px] shrink-0 text-[12px] text-muted">
+        refresh : {lastFetchedLabel}
+      </div>
+      <SourceActions id={id} active={active} onEdit={onEdit} onToggleActive={onToggleActive} />
+    </div>
+  );
+}
+
+function EditField({
+  name,
+  defaultValue,
+  placeholder,
+  required,
+  wide,
+}: {
+  name: string;
+  defaultValue: string;
+  placeholder: string;
+  required?: boolean;
+  wide?: boolean;
+}) {
+  return (
+    <input
+      name={name}
+      defaultValue={defaultValue}
+      placeholder={placeholder}
+      required={required}
+      className={`rounded-[8px] border border-border-2 bg-surface px-3 py-2 text-sm text-text-2 outline-none placeholder:text-faint focus:border-accent ${
+        wide ? "sm:col-span-2" : ""
+      }`}
+    />
+  );
+}
+
+type EditFormProps = {
+  id: string;
+  name: string;
+  url: string;
+  category: string | null;
+  error: string | null;
+  pending: boolean;
+  action: (formData: FormData) => void;
+  onCancel: () => void;
+};
+
+function SourceEditForm(p: EditFormProps) {
+  const { id, name, url, category, error, pending, action, onCancel } = p;
+  return (
+    <form action={action} className="mt-3 space-y-2 rounded-[11px] border border-border bg-surface-2 p-3">
+      <input type="hidden" name="id" value={id} />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <EditField name="name" defaultValue={name} placeholder="Nom" required />
+        <EditField name="url" defaultValue={url} placeholder="URL du flux" required wide />
+        <EditField name="category" defaultValue={category ?? ""} placeholder="Catégorie (optionnel)" />
+      </div>
+      {error && (
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-[8px] bg-accent px-3 py-1.5 text-xs font-bold text-bg transition hover:opacity-90 disabled:opacity-60"
+        >
+          {pending ? "Enregistrement…" : "Enregistrer"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-[8px] border border-border-2 px-3 py-1.5 text-xs font-medium text-text-3 transition hover:bg-surface-hov"
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export default function SourceRow(props: Props) {
+  const { id } = props;
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -43,158 +226,30 @@ export default function SourceRow({
     setEditing(false);
   }
 
-  function handleSave(formData: FormData) {
-    startTransition(() => save(formData));
+  function toggleActive() {
+    const fd = new FormData();
+    fd.set("id", id);
+    startTransition(() => toggleSourceActive(fd));
   }
-
-  const iconBtn =
-    "flex size-8 items-center justify-center rounded-[9px] border border-border-2 text-[13px] text-muted transition hover:text-text-2";
 
   return (
     <div className="rounded-[15px] border border-border bg-surface px-[18px] py-4">
-      <div className="flex items-center gap-4">
-        <span
-          className="flex size-10 shrink-0 items-center justify-center rounded-[11px] text-[17px]"
-          style={
-            active
-              ? { background: "var(--color-accent-soft)", color: "var(--color-accent)" }
-              : { background: "var(--color-border)", color: "var(--color-faint)" }
-          }
-        >
-          ⦿
-        </span>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-[9px]">
-            <span className="text-[15px] font-bold text-text">{name}</span>
-            {category && (
-              <span className="rounded-[6px] bg-border px-2 py-0.5 text-[11px] font-semibold text-muted">
-                {category}
-              </span>
-            )}
-            {active ? (
-              <span
-                className="rounded-[6px] px-2 py-0.5 text-[11px] font-semibold text-accent"
-                style={{ background: "var(--color-accent-soft)" }}
-              >
-                active
-              </span>
-            ) : (
-              <span
-                className="rounded-[6px] px-2 py-0.5 text-[11px] font-semibold"
-                style={{
-                  color: "var(--color-warn)",
-                  background: "color-mix(in oklch, var(--color-warn) 16%, transparent)",
-                }}
-              >
-                inactive
-              </span>
-            )}
-          </div>
-          <div className="mt-1 truncate font-mono text-[12px] text-faint">{url}</div>
-        </div>
-
-        <div className="shrink-0 text-right">
-          <div className="text-[15px] font-bold text-accent">{articleCount}</div>
-          <div className="text-[11px] text-faint">articles</div>
-        </div>
-
-        <div className="w-[120px] shrink-0 text-[12px] text-muted">
-          refresh : {lastFetchedLabel}
-        </div>
-
-        <div className="flex shrink-0 gap-[7px]">
-          <form action={refreshOneSource}>
-            <input type="hidden" name="id" value={id} />
-            <button type="submit" className={iconBtn} aria-label="Rafraîchir">
-              ↻
-            </button>
-          </form>
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            className={iconBtn}
-            aria-label="Éditer"
-          >
-            ✎
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              const fd = new FormData();
-              fd.set("id", id);
-              startTransition(() => toggleSourceActive(fd));
-            }}
-            className={iconBtn}
-            aria-label={active ? "Désactiver" : "Activer"}
-            title={active ? "Désactiver" : "Activer"}
-          >
-            {active ? "⏸" : "▶"}
-          </button>
-          <form action={deleteSource}>
-            <input type="hidden" name="id" value={id} />
-            <button
-              type="submit"
-              aria-label="Supprimer"
-              className="flex size-8 items-center justify-center rounded-[9px] border text-[13px] text-danger transition hover:bg-surface-hov"
-              style={{ borderColor: "var(--color-danger-bd)" }}
-            >
-              ✕
-            </button>
-          </form>
-        </div>
-      </div>
-
+      <SourceHeader
+        {...props}
+        onEdit={() => setEditing((v) => !v)}
+        onToggleActive={toggleActive}
+      />
       {editing && (
-        <form
-          action={handleSave}
-          className="mt-3 space-y-2 rounded-[11px] border border-border bg-surface-2 p-3"
-        >
-          <input type="hidden" name="id" value={id} />
-          <div className="grid gap-2 sm:grid-cols-3">
-            <input
-              name="name"
-              defaultValue={name}
-              placeholder="Nom"
-              required
-              className="rounded-[8px] border border-border-2 bg-surface px-3 py-2 text-sm text-text-2 outline-none placeholder:text-faint focus:border-accent"
-            />
-            <input
-              name="url"
-              defaultValue={url}
-              placeholder="URL du flux"
-              required
-              className="rounded-[8px] border border-border-2 bg-surface px-3 py-2 text-sm text-text-2 outline-none placeholder:text-faint focus:border-accent sm:col-span-2"
-            />
-            <input
-              name="category"
-              defaultValue={category ?? ""}
-              placeholder="Catégorie (optionnel)"
-              className="rounded-[8px] border border-border-2 bg-surface px-3 py-2 text-sm text-text-2 outline-none placeholder:text-faint focus:border-accent"
-            />
-          </div>
-          {error && (
-            <p className="text-sm text-danger" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-[8px] bg-accent px-3 py-1.5 text-xs font-bold text-bg transition hover:opacity-90 disabled:opacity-60"
-            >
-              {pending ? "Enregistrement…" : "Enregistrer"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="rounded-[8px] border border-border-2 px-3 py-1.5 text-xs font-medium text-text-3 transition hover:bg-surface-hov"
-            >
-              Annuler
-            </button>
-          </div>
-        </form>
+        <SourceEditForm
+          id={id}
+          name={props.name}
+          url={props.url}
+          category={props.category}
+          error={error}
+          pending={pending}
+          action={(formData) => startTransition(() => save(formData))}
+          onCancel={() => setEditing(false)}
+        />
       )}
     </div>
   );

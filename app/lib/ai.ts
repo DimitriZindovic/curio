@@ -18,6 +18,35 @@ function truncate(text: string): string {
   return text.length > MAX_INPUT_CHARS ? text.slice(0, MAX_INPUT_CHARS) : text;
 }
 
+/** Concatène le texte des blocs `text` d'une réponse Claude. */
+function textOf(content: { type: string; text?: string }[]): string {
+  return content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("");
+}
+
+const TAGS_SCHEMA = {
+  type: "object",
+  properties: { tags: { type: "array", items: { type: "string" } } },
+  required: ["tags"],
+  additionalProperties: false,
+};
+
+function parseTags(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as { tags?: unknown };
+    if (!Array.isArray(parsed.tags)) return [];
+    return parsed.tags
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
 /** Résume un article en 3-4 phrases, en français. */
 export async function summarize(content: string): Promise<string> {
   const text = truncate(content.trim());
@@ -32,11 +61,7 @@ export async function summarize(content: string): Promise<string> {
     messages: [{ role: "user", content: text }],
   });
 
-  return response.content
-    .filter((block) => block.type === "text")
-    .map((block) => (block as { text: string }).text)
-    .join("\n")
-    .trim();
+  return textOf(response.content).trim();
 }
 
 /**
@@ -50,6 +75,7 @@ export async function suggestTags(
   const text = truncate(content.trim());
   if (!text) return [];
 
+  const existing = existingTags.length ? existingTags.join(", ") : "(aucun)";
   const response = await getClient().messages.create({
     model: MODEL,
     max_tokens: 512,
@@ -57,45 +83,10 @@ export async function suggestTags(
     system:
       "Tu proposes des tags thématiques courts (1-2 mots, en minuscules) pour classer des articles de veille technologique. Réutilise en priorité les tags existants fournis quand ils conviennent.",
     messages: [
-      {
-        role: "user",
-        content: `Tags existants : ${
-          existingTags.length ? existingTags.join(", ") : "(aucun)"
-        }\n\nArticle :\n${text}`,
-      },
+      { role: "user", content: `Tags existants : ${existing}\n\nArticle :\n${text}` },
     ],
-    output_config: {
-      format: {
-        type: "json_schema",
-        schema: {
-          type: "object",
-          properties: {
-            tags: {
-              type: "array",
-              items: { type: "string" },
-            },
-          },
-          required: ["tags"],
-          additionalProperties: false,
-        },
-      },
-    },
+    output_config: { format: { type: "json_schema", schema: TAGS_SCHEMA } },
   });
 
-  const raw = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => (block as { text: string }).text)
-    .join("");
-
-  try {
-    const parsed = JSON.parse(raw) as { tags?: unknown };
-    if (!Array.isArray(parsed.tags)) return [];
-    return parsed.tags
-      .filter((t): t is string => typeof t === "string")
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean)
-      .slice(0, 6);
-  } catch {
-    return [];
-  }
+  return parseTags(textOf(response.content));
 }

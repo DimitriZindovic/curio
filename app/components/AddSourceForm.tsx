@@ -6,10 +6,7 @@ import { createSource, type SourceFormState } from "@/app/lib/actions/sources";
 const initialState: SourceFormState = {};
 
 export default function AddSourceForm() {
-  const [state, formAction, pending] = useActionState(
-    createSource,
-    initialState,
-  );
+  const [state, formAction, pending] = useActionState(createSource, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {

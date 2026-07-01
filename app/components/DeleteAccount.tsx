@@ -4,6 +4,56 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteUser } from "@/app/lib/auth-client";
 
+type ConfirmDeleteProps = {
+  action: (formData: FormData) => void;
+  error: string | null;
+  pending: boolean;
+  onCancel: () => void;
+};
+
+function ConfirmDelete(p: ConfirmDeleteProps) {
+  const { action, error, pending, onCancel } = p;
+  return (
+    <form action={action} className="space-y-3">
+      <p className="text-sm text-text-3">
+        Cette action est <strong>irréversible</strong> : toutes vos sources,
+        articles, tags, centres d’intérêt et digests seront définitivement
+        supprimés. Saisissez votre mot de passe pour confirmer.
+      </p>
+      <input
+        name="password"
+        type="password"
+        autoComplete="current-password"
+        required
+        placeholder="Mot de passe"
+        className="w-full max-w-xs rounded-[10px] border border-border-2 bg-surface-2 px-3 py-2 text-text-2 outline-none placeholder:text-faint focus:border-accent"
+      />
+      {error && (
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-[10px] px-4 py-2 text-sm font-bold text-bg transition hover:opacity-90 disabled:opacity-60"
+          style={{ background: "var(--color-danger)" }}
+        >
+          {pending ? "Suppression…" : "Confirmer la suppression"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-[10px] border border-border-2 px-4 py-2 text-sm font-medium text-text-3 transition hover:bg-surface-hov"
+        >
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function DeleteAccount() {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -39,42 +89,11 @@ export default function DeleteAccount() {
   }
 
   return (
-    <form action={handleDelete} className="space-y-3">
-      <p className="text-sm text-text-3">
-        Cette action est <strong>irréversible</strong> : toutes vos sources,
-        articles, tags, centres d’intérêt et digests seront définitivement
-        supprimés. Saisissez votre mot de passe pour confirmer.
-      </p>
-      <input
-        name="password"
-        type="password"
-        autoComplete="current-password"
-        required
-        placeholder="Mot de passe"
-        className="w-full max-w-xs rounded-[10px] border border-border-2 bg-surface-2 px-3 py-2 text-text-2 outline-none placeholder:text-faint focus:border-accent"
-      />
-      {error && (
-        <p className="text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-[10px] px-4 py-2 text-sm font-bold text-bg transition hover:opacity-90 disabled:opacity-60"
-          style={{ background: "var(--color-danger)" }}
-        >
-          {pending ? "Suppression…" : "Confirmer la suppression"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setConfirming(false)}
-          className="rounded-[10px] border border-border-2 px-4 py-2 text-sm font-medium text-text-3 transition hover:bg-surface-hov"
-        >
-          Annuler
-        </button>
-      </div>
-    </form>
+    <ConfirmDelete
+      action={handleDelete}
+      error={error}
+      pending={pending}
+      onCancel={() => setConfirming(false)}
+    />
   );
 }

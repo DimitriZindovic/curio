@@ -14,6 +14,35 @@ function formatDate(date: Date | null): string {
   }).format(date);
 }
 
+function SourcesHeader({
+  total,
+  activeCount,
+}: {
+  total: number;
+  activeCount: number;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <h1 className="text-[28px] font-extrabold tracking-[-0.02em] text-text">
+          Sources
+        </h1>
+        <p className="mt-[5px] text-sm text-muted">
+          {total} source(s) · {activeCount} active(s)
+        </p>
+      </div>
+      <form action={refreshAllSources}>
+        <button
+          type="submit"
+          className="rounded-[11px] border border-border-2 bg-surface px-[18px] py-[11px] text-sm font-semibold text-text-3 transition hover:bg-surface-hov"
+        >
+          ↻ Tout rafraîchir
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default async function SourcesPage() {
   const user = await requireUser();
   const sources = await prisma.source.findMany({
@@ -26,25 +55,7 @@ export default async function SourcesPage() {
   return (
     <>
       <div className="shrink-0 px-[34px] pt-[26px]">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] font-extrabold tracking-[-0.02em] text-text">
-              Sources
-            </h1>
-            <p className="mt-[5px] text-sm text-muted">
-              {sources.length} source(s) · {activeCount} active(s)
-            </p>
-          </div>
-          <form action={refreshAllSources}>
-            <button
-              type="submit"
-              className="rounded-[11px] border border-border-2 bg-surface px-[18px] py-[11px] text-sm font-semibold text-text-3 transition hover:bg-surface-hov"
-            >
-              ↻ Tout rafraîchir
-            </button>
-          </form>
-        </div>
-
+        <SourcesHeader total={sources.length} activeCount={activeCount} />
         <div className="mt-[18px]">
           <AddSourceForm />
         </div>

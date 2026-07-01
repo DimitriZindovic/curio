@@ -19,6 +19,15 @@ async function getManualSource(userId: string) {
   });
 }
 
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function addManualArticle(
   _prevState: AddArticleState,
   formData: FormData,
@@ -26,11 +35,7 @@ export async function addManualArticle(
   const user = await requireUser();
   const url = String(formData.get("url") ?? "").trim();
   if (!url) return { error: "L'URL est requise." };
-  try {
-    new URL(url);
-  } catch {
-    return { error: "URL invalide." };
-  }
+  if (!isValidUrl(url)) return { error: "URL invalide." };
 
   const existing = await prisma.article.findUnique({
     where: { userId_url: { userId: user.id, url } },
