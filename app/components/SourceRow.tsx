@@ -33,16 +33,18 @@ export default function SourceRow({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  async function save(formData: FormData) {
+    const result = await updateSource(emptyState, formData);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    setError(null);
+    setEditing(false);
+  }
+
   function handleSave(formData: FormData) {
-    startTransition(async () => {
-      const result = await updateSource(emptyState, formData);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setError(null);
-        setEditing(false);
-      }
-    });
+    startTransition(() => save(formData));
   }
 
   const iconBtn =

@@ -8,16 +8,17 @@ export default function SuggestTags({ articleId }: { articleId: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  async function loadSuggestions() {
+    try {
+      setSuggestions(await suggestArticleTags(articleId));
+    } catch {
+      setError("Échec de la suggestion IA (clé API manquante ?).");
+    }
+  }
+
   function handleSuggest() {
     setError(null);
-    startTransition(async () => {
-      try {
-        const result = await suggestArticleTags(articleId);
-        setSuggestions(result);
-      } catch {
-        setError("Échec de la suggestion IA (clé API manquante ?).");
-      }
-    });
+    startTransition(loadSuggestions);
   }
 
   return (
