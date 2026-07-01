@@ -16,7 +16,16 @@ export const dynamic = "force-dynamic";
 async function loadDashboard(userId: string, params: SearchParams) {
   const status = params.status ?? "all";
   const sortBy = params.sort ?? "score";
-  const minScore = Math.max(0, Math.floor(Number(params.minScore) || 0));
+
+  // Le plancher de pertinence enregistré agit comme minimum permanent ; le
+  // filtre ad-hoc de l'URL ne peut que le relever (jamais l'abaisser).
+  const settings = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { minRelevanceScore: true },
+  });
+  const floor = settings?.minRelevanceScore ?? 0;
+  const explicit = Math.max(0, Math.floor(Number(params.minScore) || 0));
+  const minScore = Math.max(explicit, floor);
 
   const where: Prisma.ArticleWhereInput = { userId };
   if (status === "unread") where.read = false;

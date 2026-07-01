@@ -2,10 +2,36 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
+import { suggestTags } from "@/app/lib/ai";
 import { recomputeUserScores } from "@/app/lib/scoring";
 import { requireUser } from "@/app/lib/session";
 
 export type InterestState = { error?: string; ok?: boolean };
+
+// Poids attribué à un centre d'intérêt ajouté depuis une suggestion IA :
+// médian sur l'échelle usuelle, ajustable ensuite par suppression/réajout.
+const SUGGESTED_INTEREST_WEIGHT = 3;
+// Nombre d'articles les mieux notés analysés pour proposer des intérêts.
+const TOP_ARTICLES_FOR_SUGGESTION = 12;
+
+/**
+ * Crée un centre d'intérêt (mot-clé déjà normalisé) et recalcule les scores.
+ * Renvoie false si le mot-clé existe déjà pour cet utilisateur.
+ */
+async function insertInterest(
+  userId: string,
+  keyword: string,
+  weight: number,
+): Promise<boolean> {
+  const existing = await prisma.interest.findUnique({
+    where: { userId_keyword: { userId, keyword } },
+  });
+  if (existing) return false;
+
+  await prisma.interest.create({ data: { keyword, weight, userId } });
+  await recomputeUserScores(userId);
+  return true;
+}
 
 export async function addInterest(
   _prevState: InterestState,
@@ -22,19 +48,57 @@ export async function addInterest(
     return { error: "Le poids doit être un entier ≥ 1." };
   }
 
-  const existing = await prisma.interest.findUnique({
-    where: { userId_keyword: { userId: user.id, keyword } },
-  });
-  if (existing) return { error: "Ce mot-clé existe déjà." };
-
-  await prisma.interest.create({
-    data: { keyword, weight: Math.floor(weight), userId: user.id },
-  });
-  await recomputeUserScores(user.id);
+  const created = await insertInterest(user.id, keyword, Math.floor(weight));
+  if (!created) return { error: "Ce mot-clé existe déjà." };
 
   revalidatePath("/settings");
   revalidatePath("/");
   return { ok: true };
+}
+
+/** Ajoute un centre d'intérêt issu d'une suggestion IA, poids par défaut. */
+export async function addSuggestedInterest(formData: FormData) {
+  const user = await requireUser();
+  const keyword = String(formData.get("keyword") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!keyword) return;
+
+  await insertInterest(user.id, keyword, SUGGESTED_INTEREST_WEIGHT);
+  revalidatePath("/settings");
+  revalidatePath("/");
+}
+
+/**
+ * Propose de nouveaux mots-clés d'intérêt à partir des articles les mieux
+ * notés de l'utilisateur, en réutilisant `suggestTags` (seul appel LLM permis).
+ * N'invente aucun score : le LLM ne fait que dégager des thèmes du corpus.
+ */
+export async function suggestInterests(): Promise<string[]> {
+  const user = await requireUser();
+  const [articles, interests] = await Promise.all([
+    prisma.article.findMany({
+      where: { userId: user.id },
+      orderBy: [{ relevanceScore: "desc" }, { createdAt: "desc" }],
+      take: TOP_ARTICLES_FOR_SUGGESTION,
+      select: { title: true, summary: true, excerpt: true },
+    }),
+    prisma.interest.findMany({
+      where: { userId: user.id },
+      select: { keyword: true },
+    }),
+  ]);
+  if (articles.length === 0) return [];
+
+  const corpus = articles
+    .map((a) => [a.title, a.summary, a.excerpt].filter(Boolean).join(" — "))
+    .join("\n\n");
+
+  const existing = interests.map((i) => i.keyword);
+  const suggestions = await suggestTags(corpus, existing);
+
+  const current = new Set(existing);
+  return suggestions.filter((keyword) => !current.has(keyword));
 }
 
 export async function deleteInterest(formData: FormData) {

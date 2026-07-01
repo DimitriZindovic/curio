@@ -24,6 +24,10 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  // Préférence de pertinence : plancher de score sous lequel les articles
+  // sont masqués par défaut sur le dashboard (0 = aucun filtre).
+  minRelevanceScore Int @default(0)
+
   // données applicatives (multi-tenant)
   sources   Source[]
   articles  Article[]
