@@ -1,7 +1,11 @@
 import { prisma } from "@/app/lib/prisma";
 import AddInterestForm from "@/app/components/AddInterestForm";
 import SuggestInterests from "@/app/components/SuggestInterests";
-import { deleteInterest, recomputeScores } from "@/app/lib/actions/interests";
+import {
+  deleteInterest,
+  recomputeScores,
+  updateInterestWeight,
+} from "@/app/lib/actions/interests";
 import { updateRelevanceThreshold } from "@/app/lib/actions/settings";
 import { requireUser } from "@/app/lib/session";
 
@@ -14,12 +18,25 @@ function InterestRow({
 }) {
   return (
     <div className="flex items-center gap-4 rounded-[13px] border border-border bg-surface px-4 py-[13px]">
-      <span
-        className="min-w-[48px] rounded-[8px] px-[11px] py-1 text-center font-mono text-[14px] font-semibold text-accent"
-        style={{ background: "var(--color-accent-soft)" }}
-      >
-        +{interest.weight}
-      </span>
+      <form action={updateInterestWeight} className="flex items-center gap-[6px]">
+        <input type="hidden" name="id" value={interest.id} />
+        <input
+          type="number"
+          name="weight"
+          min={1}
+          defaultValue={interest.weight}
+          aria-label={`Poids de ${interest.keyword}`}
+          className="w-[58px] rounded-[8px] border-0 px-[9px] py-1 text-center font-mono text-[14px] font-semibold text-accent outline-none focus:ring-1 focus:ring-accent"
+          style={{ background: "var(--color-accent-soft)" }}
+        />
+        <button
+          type="submit"
+          aria-label={`Enregistrer le poids de ${interest.keyword}`}
+          className="flex size-[30px] items-center justify-center rounded-[8px] border border-border-2 text-[12px] text-muted transition hover:bg-surface-hov hover:text-text-2"
+        >
+          ✓
+        </button>
+      </form>
       <span className="shrink-0 text-[15px] font-semibold text-text-2">
         {interest.keyword}
       </span>

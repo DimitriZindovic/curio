@@ -31,8 +31,9 @@ Détail + edge cases dans [PROJECT_RULES.md](./PROJECT_RULES.md). Les invariants
 ## Conventions de code
 
 ### Style & structure
+
 - **Nommage** : composants React en **PascalCase** (`ScoreRing.tsx`), helpers/actions/lib en **camelCase / kebab** tels qu'existants (`scoring.ts`, `auth-server.ts`). Suivre l'existant, ne pas renommer.
-- **Langue** : commentaires et docs en **français**, identifiants (variables, fonctions, types) en **anglais**. Un commentaire explique le *pourquoi*, pas le *quoi*.
+- **Langue** : commentaires et docs en **français**, identifiants (variables, fonctions, types) en **anglais**. Un commentaire explique le _pourquoi_, pas le _quoi_.
 - **Pas de `any`, pas de `@ts-ignore`.** En cas de doute sur un type, demander.
 - **Logique métier dans `app/lib/` uniquement** (jamais dans un composant React). Les pages orchestrent et affichent ; la logique vit dans `lib/` et les Server Actions.
 - **Placement d'une nouvelle feature** : logique pure/persistance dans `app/lib/`, mutation dans `app/lib/actions/`, écran dans `app/(app)/…`, composant partagé dans `app/components/`. Créer un composant dès qu'un bloc JSX est réutilisé ou porte une responsabilité distincte.
@@ -41,34 +42,42 @@ Détail + edge cases dans [PROJECT_RULES.md](./PROJECT_RULES.md). Les invariants
 - **Imbrication** : **5+ niveaux de contrôle = interdit** (échec `lint-dette.ts`, détection AST, façon `max-depth` : if/for/while/switch/try, remise à zéro par fonction) → early return ou extraction de helper.
 
 ### Erreurs & logs
+
 - **Pas de `try/catch` silencieux** : toute erreur est **re-throw** ou **loggée via `app/lib/logger.ts`** (`logError` / `logWarn`), jamais avalée. Utiliser `errorMessage(err)` pour normaliser le `catch`.
 - Reculs best-effort **assumés et documentés + tracés** : scraping dans `resolveContent` (`logWarn`), `refreshSource` (erreur remontée dans `RefreshResult`), parsing de sortie LLM dans `ai.ts` (`logWarn`).
 - **Contrat des Server Actions de formulaire** : type unique `ActionState` (`app/lib/actions/types.ts`) → `{ ok?: boolean; error?: string }`. Ne pas redéclarer un type d'état par fichier. Les actions « fire-and-forget » (toggle/delete) ne renvoient rien.
 
 ### Tests
+
 - Écrire un test **pour toute fonction déterministe de `lib/`** (scoring, RSS, parsing) et pour la **validation + le scoping `userId`** des Server Actions. Pas de test de rendu UI.
 - Pas de barre de couverture chiffrée ; règle : « la logique métier et les invariants sont couverts ».
 
 ### UI / styling
+
 - Les **valeurs littérales de layout Tailwind** (`px-[34px]`, `rounded-[13px]`…) sont **assumées** (design pixel-perfect) et **exemptées** de « no magic number ». Préférer les tokens du thème (`bg-surface`, `text-accent`…) quand ils existent. La règle « no magic number » s'applique aux **valeurs métier** uniquement.
 
 ### Base de données & dépendances
+
 - **Migrations Prisma sur une base locale d'abord**, jamais directement sur la prod/partagée. Toute commande à effet de bord externe (migration, réseau, déploiement) : **confirmer avant** (cf. Autonomie).
 - **Nouvelle dépendance** = justifiée et minimale. Outil de dev léger (ex. `tsx`) : OK. Dépendance runtime : demander avant.
 
 ### IA / LLM
+
 - LLM **uniquement dans `ai.ts`**, pour **résumer / suggérer** (jamais calculer). Toujours **garder l'entrée** (skip si vide/trop courte) et **tronquer** (`MAX_INPUT_CHARS`). Absence de `ANTHROPIC_API_KEY` → erreur claire re-throw (jamais un faux résultat silencieux). Modèle centralisé dans la constante `MODEL`.
 
 ### Sécurité & données
+
 - Traiter toute entrée externe comme **non fiable** : valider les URL (`new URL`), n'afficher que du **texte extrait** (Readability), jamais du HTML brut scrapé. Endpoints sensibles protégés par secret (`CRON_SECRET`). Secrets via l'environnement, jamais en dur (y compris dans `.mcp.json`).
 - Suppression de compte → **cascade** sur toutes les données applicatives (déjà en place).
 
 ### Git & livraison
+
 - **Conventional Commits** : `feat|fix|refactor|chore|docs(scope): …`. Petits commits cohérents.
 - **Ne pas committer sans demande explicite** ; ne jamais committer sur `main` sans validation (créer une branche sinon).
 - **`npm run gate` doit être vert avant tout commit** (lint + types + tests + dette + invariants + gate scoring). Hook fourni : `.githooks/pre-commit` (activer une fois via `git config core.hooksPath .githooks`).
 
 ### Autonomie
+
 - Agir directement sur le **réversible** (lecture, code, refactor sous tests) et rendre compte. **Confirmer avant** tout **effet de bord externe** : migration sur base partagée, appel réseau mutant, déploiement.
 
 ## Modules déterministes à appeler (ne pas réinventer)

@@ -8,7 +8,7 @@ import { requireUser } from "@/app/lib/session";
 import type { ActionState } from "@/app/lib/actions/types";
 
 // Poids attribué à un centre d'intérêt ajouté depuis une suggestion IA :
-// médian sur l'échelle usuelle, ajustable ensuite par suppression/réajout.
+// médian sur l'échelle usuelle, ajustable ensuite en place.
 const SUGGESTED_INTEREST_WEIGHT = 3;
 // Nombre d'articles les mieux notés analysés pour proposer des intérêts.
 const TOP_ARTICLES_FOR_SUGGESTION = 12;
@@ -98,6 +98,24 @@ export async function suggestInterests(): Promise<string[]> {
 
   const current = new Set(existing);
   return suggestions.filter((keyword) => !current.has(keyword));
+}
+
+/** Met à jour le poids d'un centre d'intérêt et recalcule les scores. */
+export async function updateInterestWeight(formData: FormData) {
+  const user = await requireUser();
+  const id = String(formData.get("id") ?? "");
+  const weight = Number(formData.get("weight"));
+  if (!id || !Number.isFinite(weight) || weight < 1) return;
+
+  const updated = await prisma.interest.updateMany({
+    where: { id, userId: user.id },
+    data: { weight: Math.floor(weight) },
+  });
+  if (updated.count === 0) return;
+
+  await recomputeUserScores(user.id);
+  revalidatePath("/settings");
+  revalidatePath("/");
 }
 
 export async function deleteInterest(formData: FormData) {
