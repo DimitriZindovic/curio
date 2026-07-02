@@ -1,12 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import {
-  addManualArticle,
-  type AddArticleState,
-} from "@/app/lib/actions/articles";
+import { addManualArticle } from "@/app/lib/actions/articles";
+import type { ActionState } from "@/app/lib/actions/types";
 
-const initialState: AddArticleState = {};
+const initialState: ActionState = {};
 
 export default function AddArticleForm() {
   const [state, formAction, pending] = useActionState(

@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { addInterest, type InterestState } from "@/app/lib/actions/interests";
+import { addInterest } from "@/app/lib/actions/interests";
+import type { ActionState } from "@/app/lib/actions/types";
 
-const initialState: InterestState = {};
+const initialState: ActionState = {};
 
 export default function AddInterestForm() {
   const [state, formAction, pending] = useActionState(

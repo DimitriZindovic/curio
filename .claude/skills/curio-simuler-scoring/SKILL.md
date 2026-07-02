@@ -52,7 +52,21 @@ Si l'utilisateur fournit juste un titre et quelques mots-clés, c'est suffisant.
 
 **Score = 8**
 
+## Script déterministe adossé (source de vérité)
+
+Le calcul « en tête » doit correspondre au script qui rejoue le **vrai** `computeScore` (`app/lib/scoring-core.ts`, importé — rien n'est réimplémenté) :
+
+```bash
+# Simulation sur un scénario JSON { article, interests }
+npx tsx scripts/simulate-scoring.ts <input.json>
+
+# Gate I/O : valide la sortie contre des cas golden (exit 1 si KO)
+npx tsx scripts/simulate-scoring.ts --check
+```
+
+En cas de doute sur un score dans le chat, écrire le scénario en JSON et lancer le script : sa sortie fait foi. Le script **valide aussi l'entrée** (structure, types) et échoue bruyamment sur une entrée malformée (pas de silent fail).
+
 ## Limites (à annoncer si pertinent)
 
-- Simulation en tête : ne remplace pas `npm test` ni l'exécution réelle. Pour valider en vrai, appeler `computeScore()` via un test Vitest.
+- Simulation en tête : ne remplace pas `npm test` ni le script `--check`. Pour trancher, lancer `simulate-scoring.ts`.
 - N'écrit rien en base : `recomputeUserScores()` (persistance + `where: { userId }`) n'est **pas** simulée ici, seul le calcul pur l'est.

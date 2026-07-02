@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { logWarn, errorMessage } from "@/app/lib/logger";
 
 const MODEL = "claude-sonnet-4-6";
 // Plafond grossier de caractères envoyés au modèle (~ quelques milliers de tokens).
@@ -42,7 +43,11 @@ function parseTags(raw: string): string[] {
       .map((t) => t.trim().toLowerCase())
       .filter(Boolean)
       .slice(0, 6);
-  } catch {
+  } catch (err) {
+    // Sortie LLM non-JSON : repli sur « aucun tag », mais tracé.
+    logWarn("ai", "réponse tags illisible (JSON invalide)", {
+      cause: errorMessage(err),
+    });
     return [];
   }
 }

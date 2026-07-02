@@ -4,13 +4,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/app/lib/prisma";
 import { refreshSource } from "@/app/lib/rss";
 import { requireUser } from "@/app/lib/session";
-
-export type SourceFormState = { error?: string; ok?: boolean };
+import type { ActionState } from "@/app/lib/actions/types";
 
 export async function createSource(
-  _prevState: SourceFormState,
+  _prevState: ActionState,
   formData: FormData,
-): Promise<SourceFormState> {
+): Promise<ActionState> {
   const user = await requireUser();
   const name = String(formData.get("name") ?? "").trim();
   const url = String(formData.get("url") ?? "").trim();
@@ -41,9 +40,9 @@ export async function createSource(
 }
 
 export async function updateSource(
-  _prevState: SourceFormState,
+  _prevState: ActionState,
   formData: FormData,
-): Promise<SourceFormState> {
+): Promise<ActionState> {
   const user = await requireUser();
   const id = String(formData.get("id") ?? "");
   const name = String(formData.get("name") ?? "").trim();

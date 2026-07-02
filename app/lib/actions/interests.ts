@@ -5,8 +5,7 @@ import { prisma } from "@/app/lib/prisma";
 import { suggestTags } from "@/app/lib/ai";
 import { recomputeUserScores } from "@/app/lib/scoring";
 import { requireUser } from "@/app/lib/session";
-
-export type InterestState = { error?: string; ok?: boolean };
+import type { ActionState } from "@/app/lib/actions/types";
 
 // Poids attribué à un centre d'intérêt ajouté depuis une suggestion IA :
 // médian sur l'échelle usuelle, ajustable ensuite par suppression/réajout.
@@ -34,9 +33,9 @@ async function insertInterest(
 }
 
 export async function addInterest(
-  _prevState: InterestState,
+  _prevState: ActionState,
   formData: FormData,
-): Promise<InterestState> {
+): Promise<ActionState> {
   const user = await requireUser();
   const keyword = String(formData.get("keyword") ?? "")
     .trim()

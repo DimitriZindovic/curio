@@ -17,13 +17,16 @@ import { join } from "node:path";
 
 const violations: string[] = [];
 
-// 1. Toute action gate l'accès via requireUser()
+// 1. Tout MODULE de Server Actions gate l'accès via requireUser().
+//    On ne cible que les fichiers marqués "use server" : un module de types
+//    partagés (ex. types.ts) n'expose aucune action et n'a rien à gater.
 const actionsDir = "app/lib/actions";
 if (existsSync(actionsDir)) {
   for (const file of readdirSync(actionsDir)) {
     if (!file.endsWith(".ts")) continue;
     const content = readFileSync(join(actionsDir, file), "utf8");
-    if (!content.includes("requireUser(")) {
+    const isServerActionModule = /["']use server["']/.test(content);
+    if (isServerActionModule && !content.includes("requireUser(")) {
       violations.push(
         `[multi-tenant] ${actionsDir}/${file} : aucune Server Action n'appelle requireUser() — risque de fuite inter-comptes.`,
       );

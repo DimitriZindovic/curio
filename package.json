@@ -9,7 +9,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "invariants": "tsx scripts/check-invariants.ts",
+    "debt": "tsx scripts/lint-dette.ts",
+    "score:check": "tsx scripts/simulate-scoring.ts --check",
+    "gate": "npm run lint && tsc --noEmit && npm test && npm run debt && npm run invariants && npm run score:check"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
@@ -35,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4.3.1",
+    "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^4.1.9"
   }

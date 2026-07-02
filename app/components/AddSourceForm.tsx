@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
-import { createSource, type SourceFormState } from "@/app/lib/actions/sources";
+import { createSource } from "@/app/lib/actions/sources";
+import type { ActionState } from "@/app/lib/actions/types";
 
-const initialState: SourceFormState = {};
+const initialState: ActionState = {};
 
 export default function AddSourceForm() {
   const [state, formAction, pending] = useActionState(createSource, initialState);

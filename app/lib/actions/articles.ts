@@ -5,9 +5,9 @@ import { prisma } from "@/app/lib/prisma";
 import { scrapeArticle } from "@/app/lib/scrape";
 import { computeScore } from "@/app/lib/scoring";
 import { summarize } from "@/app/lib/ai";
+import { logWarn, errorMessage } from "@/app/lib/logger";
 import { requireUser } from "@/app/lib/session";
-
-export type AddArticleState = { error?: string; ok?: boolean };
+import type { ActionState } from "@/app/lib/actions/types";
 
 /** Récupère (ou crée) la source virtuelle des ajouts manuels de l'utilisateur. */
 async function getManualSource(userId: string) {
@@ -29,9 +29,9 @@ function isValidUrl(url: string): boolean {
 }
 
 export async function addManualArticle(
-  _prevState: AddArticleState,
+  _prevState: ActionState,
   formData: FormData,
-): Promise<AddArticleState> {
+): Promise<ActionState> {
   const user = await requireUser();
   const url = String(formData.get("url") ?? "").trim();
   if (!url) return { error: "L'URL est requise." };
@@ -125,8 +125,13 @@ async function resolveContent(article: {
     const text = scraped.content;
     if (text && text.length > content.length)
       return { content: text, excerpt: excerpt ?? scraped.excerpt };
-  } catch {
-    // Scraping impossible (paywall, JS, 403…) : on garde ce qu'on a.
+  } catch (err) {
+    // Scraping impossible (paywall, JS, 403…) : repli best-effort documenté,
+    // mais tracé (jamais totalement silencieux — cf. CLAUDE.md).
+    logWarn("scrape", "extraction impossible, repli sur le contenu existant", {
+      url: article.url,
+      cause: errorMessage(err),
+    });
   }
   return { content, excerpt };
 }

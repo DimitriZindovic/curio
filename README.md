@@ -47,6 +47,8 @@ Comptes **email + mot de passe** via Better Auth (`app/lib/auth-server.ts`, endp
 | 3   | Résumé IA de chaque article (Claude, runtime)              | Détail article |
 | 4   | Tagging manuel + suggestion de tags par l'IA               | Détail article |
 | 5   | Scoring de pertinence configurable (mots-clés pondérés)    | `/settings`    |
+| 6   | Seuil de pertinence : masquer les articles sous un score   | `/settings`    |
+| 7   | Suggestion de centres d'intérêt par l'IA (top-articles)    | `/settings`    |
 | +   | Digest hebdomadaire (bonus)                                | `/digests`     |
 
 ## Refresh automatique
@@ -82,6 +84,25 @@ Couverture : logique de scoring (`computeScore`, `scoreColor`), normalisation de
 
 ## Cadrage de l'IA (méthode)
 
+Principe : *ce qui doit être fiable passe par un script déterministe, pas par le LLM.*
+
 - **`CLAUDE.md`** — règles, invariants, conventions, modules déterministes à appeler. Détail dans `PROJECT_RULES.md`, `ARCHITECTURE.md`, `DEPLOY.md`.
-- **Skills** (`.claude/skills/`) : `curio-veille` (métier — domaine veille & scoring) et `quality-gate` (transverse — garde-fou anti-dette réutilisable).
-- **Scripts déterministes** (`scripts/`) : `lint-dette.ts` (dette générique) et `check-invariants.ts` (invariants multi-tenant), + la logique fiable centralisée dans `app/lib/` (`scoring.ts`, `rss.ts`, `scrape.ts`).
+- **`DECISIONS.md`** — journal des décisions techniques (ADR léger), à jour.
+- **Skills** (`.claude/skills/`) :
+  - `curio-veille` (métier — domaine veille & scoring),
+  - `quality-gate` (transverse — garde-fou anti-dette réutilisable),
+  - `curio-simuler-scoring` (métier — rejoue le scoring dans le chat, **adossé à un script**).
+- **Scripts déterministes** (`scripts/`, zéro LLM) :
+  - `lint-dette.ts` — dette générique (TODO, `any`, catch vide, god files),
+  - `check-invariants.ts` — invariants multi-tenant / LLM scopé / Prisma 7 / `proxy.ts`,
+  - `simulate-scoring.ts` — rejoue le vrai `computeScore` ; mode `--check` = **gate de validation I/O** sur cas golden.
+- **Plan = contrat** : `docs/plans/*.plan.md` (plan validé avant d'exécuter).
+- **Tests e2e (MCP)** : `.mcp.json` déclare le serveur **Playwright MCP** (`@playwright/mcp`) qui pilote un vrai navigateur pour jouer les parcours de bout en bout (login → sources → article → scoring).
+
+```bash
+# Garde-fous (à lancer avant tout commit — cf. skill quality-gate)
+npm run lint && npx tsc --noEmit && npm test
+npx tsx scripts/lint-dette.ts
+npx tsx scripts/check-invariants.ts
+npx tsx scripts/simulate-scoring.ts --check
+```

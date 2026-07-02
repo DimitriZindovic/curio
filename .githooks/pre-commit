@@ -1,0 +1,4 @@
+#!/bin/sh
+
+echo "→ pre-commit : npm run gate"
+npm run gate
