@@ -15,7 +15,8 @@ const TOP_ARTICLES_FOR_SUGGESTION = 12;
 
 /**
  * Crée un centre d'intérêt (mot-clé déjà normalisé) et recalcule les scores.
- * Renvoie false si le mot-clé existe déjà pour cet utilisateur.
+ * Renvoie false si le mot-clé existe déjà pour cet utilisateur — utilisé par
+ * la voie « suggestion IA », qui ne doit jamais écraser un poids réglé à la main.
  */
 async function insertInterest(
   userId: string,
@@ -47,8 +48,13 @@ export async function addInterest(
     return { error: "Le poids doit être un entier ≥ 1." };
   }
 
-  const created = await insertInterest(user.id, keyword, Math.floor(weight));
-  if (!created) return { error: "Ce mot-clé existe déjà." };
+  // Mot-clé déjà stocké → on met à jour son poids (pas de doublon possible).
+  await prisma.interest.upsert({
+    where: { userId_keyword: { userId: user.id, keyword } },
+    update: { weight: Math.floor(weight) },
+    create: { userId: user.id, keyword, weight: Math.floor(weight) },
+  });
+  await recomputeUserScores(user.id);
 
   revalidatePath("/settings");
   revalidatePath("/");
