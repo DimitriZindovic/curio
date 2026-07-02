@@ -13,6 +13,7 @@ import ts from "typescript";
  *   - stubs non implementes
  *   - god files (> 300 lignes)
  *   - fonctions trop longues (> 50 lignes, detection AST)
+ *   - imbrication trop profonde (5+ niveaux de controle, detection AST)
  *
  * Les mots-cles recherches sont fragmentes (assembles a l'execution) pour
  * qu'un scanner de dette ne se signale pas lui-meme sur ce fichier.
@@ -25,6 +26,8 @@ const TARGET = process.argv[2] ?? "app";
 const GOD_FILE_MAX = 300;
 // Une fonction de plus de 50 lignes fait trop de choses : dure à lire, à tester.
 const FUNCTION_MAX_LINES = 50;
+// Du code imbriqué sur 5+ niveaux : logique difficile à suivre, bugs faciles à cacher.
+const NESTING_MAX_DEPTH = 4;
 const SCANNED_EXT = new Set([".ts", ".tsx"]);
 
 // Mots-clés assemblés à partir de fragments (jamais en toutes lettres ici).
@@ -87,6 +90,44 @@ function findLongFunctions(file: string, content: string): LongFunction[] {
   return found;
 }
 
+/** Structures de contrôle qui créent un niveau d'imbrication (façon max-depth). */
+function isNestingNode(node: ts.Node): boolean {
+  return (
+    ts.isIfStatement(node) ||
+    ts.isForStatement(node) ||
+    ts.isForInStatement(node) ||
+    ts.isForOfStatement(node) ||
+    ts.isWhileStatement(node) ||
+    ts.isDoStatement(node) ||
+    ts.isSwitchStatement(node) ||
+    ts.isTryStatement(node)
+  );
+}
+
+type DeepNesting = { file: string; line: number; depth: number };
+
+/** Détection AST : imbrication de contrôle au-delà du plafond (fonction = base 0). */
+function findDeepNesting(file: string, content: string): DeepNesting[] {
+  const sf = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true);
+  const found: DeepNesting[] = [];
+  const visit = (node: ts.Node, depth: number): void => {
+    let next = depth;
+    if (isFunctionWithBody(node)) {
+      next = 0; // une fonction repart de zéro : on mesure SA logique interne
+    } else if (isNestingNode(node)) {
+      next = depth + 1;
+      if (next > NESTING_MAX_DEPTH) {
+        const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
+        found.push({ file, line, depth: next });
+        return; // un seul signalement par chaîne trop profonde, pas un par étage
+      }
+    }
+    ts.forEachChild(node, (child) => visit(child, next));
+  };
+  visit(sf, 0);
+  return found;
+}
+
 function listFiles(dir: string): string[] {
   const result: string[] = [];
   for (const entry of readdirSync(dir)) {
@@ -114,12 +155,14 @@ type Finding = { file: string; line: number; rule: string; text: string };
 const findings: Finding[] = [];
 const godFiles: { file: string; lines: number }[] = [];
 const longFunctions: LongFunction[] = [];
+const deepNestings: DeepNesting[] = [];
 
 for (const file of files) {
   const content = readFileSync(file, "utf8");
   const lines = content.split("\n");
   if (lines.length > GOD_FILE_MAX) godFiles.push({ file, lines: lines.length });
   longFunctions.push(...findLongFunctions(file, content));
+  deepNestings.push(...findDeepNesting(file, content));
   lines.forEach((text, index) => {
     for (const rule of RULES) {
       if (rule.pattern.test(text)) {
@@ -147,8 +190,14 @@ for (const fn of longFunctions) {
     `  [fonction > ${FUNCTION_MAX_LINES} lignes] ${relative(".", fn.file)}:${fn.line} — ${fn.name} (${fn.length} lignes)`,
   );
 }
+for (const d of deepNestings) {
+  line(
+    `  [imbrication > ${NESTING_MAX_DEPTH} niveaux] ${relative(".", d.file)}:${d.line} (profondeur ${d.depth})`,
+  );
+}
 
-const total = findings.length + godFiles.length + longFunctions.length;
+const total =
+  findings.length + godFiles.length + longFunctions.length + deepNestings.length;
 line("");
 line("============================================================");
 if (total === 0) {
