@@ -13,26 +13,39 @@ import {
 
 export const dynamic = "force-dynamic";
 
-async function loadDashboard(userId: string, params: SearchParams) {
-  const status = params.status ?? "all";
-  const sortBy = params.sort ?? "score";
-
-  // Le plancher de pertinence enregistré agit comme minimum permanent ; le
-  // filtre ad-hoc de l'URL ne peut que le relever (jamais l'abaisser).
+// Le plancher de pertinence enregistré agit comme minimum permanent ; le
+// filtre ad-hoc de l'URL ne peut que le relever (jamais l'abaisser).
+async function resolveMinScore(userId: string, params: SearchParams): Promise<number> {
   const settings = await prisma.user.findUnique({
     where: { id: userId },
     select: { minRelevanceScore: true },
   });
   const floor = settings?.minRelevanceScore ?? 0;
   const explicit = Math.max(0, Math.floor(Number(params.minScore) || 0));
-  const minScore = Math.max(explicit, floor);
+  return Math.max(explicit, floor);
+}
 
+function buildArticleWhere(
+  userId: string,
+  params: SearchParams,
+  status: string,
+  minScore: number,
+): Prisma.ArticleWhereInput {
   const where: Prisma.ArticleWhereInput = { userId };
   if (status === "unread") where.read = false;
   if (status === "read") where.read = true;
   if (params.sourceId) where.sourceId = params.sourceId;
   if (params.tag) where.tags = { some: { label: params.tag } };
   if (minScore > 0) where.relevanceScore = { gte: minScore };
+  return where;
+}
+
+async function loadDashboard(userId: string, params: SearchParams) {
+  const status = params.status ?? "all";
+  const sortBy = params.sort ?? "score";
+
+  const minScore = await resolveMinScore(userId, params);
+  const where = buildArticleWhere(userId, params, status, minScore);
 
   const orderBy: Prisma.ArticleOrderByWithRelationInput[] =
     sortBy === "date"

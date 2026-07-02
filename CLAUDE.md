@@ -37,6 +37,7 @@ Détail + edge cases dans [PROJECT_RULES.md](./PROJECT_RULES.md). Les invariants
 - **Logique métier dans `app/lib/` uniquement** (jamais dans un composant React). Les pages orchestrent et affichent ; la logique vit dans `lib/` et les Server Actions.
 - **Placement d'une nouvelle feature** : logique pure/persistance dans `app/lib/`, mutation dans `app/lib/actions/`, écran dans `app/(app)/…`, composant partagé dans `app/components/`. Créer un composant dès qu'un bloc JSX est réutilisé ou porte une responsabilité distincte.
 - **Taille de fichier** : viser **< 250 lignes** (cible souple). Toléré **250–300** pour une composition UI cohésive. **> 300 = interdit** (échec `lint-dette.ts`) → découper.
+- **Taille de fonction** : **> 50 lignes = interdit** (échec `lint-dette.ts`, détection AST) — une fonction qui dépasse fait trop de choses → extraire des helpers.
 
 ### Erreurs & logs
 - **Pas de `try/catch` silencieux** : toute erreur est **re-throw** ou **loggée via `app/lib/logger.ts`** (`logError` / `logWarn`), jamais avalée. Utiliser `errorMessage(err)` pour normaliser le `catch`.
